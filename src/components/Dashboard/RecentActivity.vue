@@ -21,7 +21,7 @@ const activities: Activity[] = [
     title: 'Deal Closed',
     description: 'Acme Corp - Enterprise Plan',
     time: '10 min ago',
-    user: { name: 'Sarah', avatar: 'S' }
+    user: { name: 'Sarah', avatar: 'S' },
   },
   {
     id: 2,
@@ -29,7 +29,7 @@ const activities: Activity[] = [
     title: 'Call Completed',
     description: 'Follow-up with John Smith',
     time: '25 min ago',
-    user: { name: 'Mike', avatar: 'M' }
+    user: { name: 'Mike', avatar: 'M' },
   },
   {
     id: 3,
@@ -37,7 +37,7 @@ const activities: Activity[] = [
     title: 'Email Sent',
     description: 'Proposal sent to TechStart Inc',
     time: '1 hour ago',
-    user: { name: 'Lisa', avatar: 'L' }
+    user: { name: 'Lisa', avatar: 'L' },
   },
   {
     id: 4,
@@ -45,7 +45,7 @@ const activities: Activity[] = [
     title: 'Meeting Scheduled',
     description: 'Demo with GlobalTech team',
     time: '2 hours ago',
-    user: { name: 'John', avatar: 'J' }
+    user: { name: 'John', avatar: 'J' },
   },
   {
     id: 5,
@@ -53,27 +53,37 @@ const activities: Activity[] = [
     title: 'Email Opened',
     description: 'Marketing proposal viewed',
     time: '3 hours ago',
-    user: { name: 'Sarah', avatar: 'S' }
+    user: { name: 'Sarah', avatar: 'S' },
   },
 ]
 
 const getTypeColor = (type: Activity['type']) => {
   switch (type) {
-    case 'deal': return 'bg-emerald-500'
-    case 'call': return 'bg-blue-500'
-    case 'email': return 'bg-indigo-500'
-    case 'meeting': return 'bg-amber-500'
-    default: return 'bg-gray-500'
+    case 'deal':
+      return 'bg-emerald-500'
+    case 'call':
+      return 'bg-blue-500'
+    case 'email':
+      return 'bg-indigo-500'
+    case 'meeting':
+      return 'bg-amber-500'
+    default:
+      return 'bg-gray-500'
   }
 }
 
 const getTypeBadge = (type: Activity['type']) => {
   switch (type) {
-    case 'deal': return 'success'
-    case 'call': return 'primary'
-    case 'email': return 'info'
-    case 'meeting': return 'warning'
-    default: return 'primary'
+    case 'deal':
+      return 'success'
+    case 'call':
+      return 'primary'
+    case 'email':
+      return 'info'
+    case 'meeting':
+      return 'warning'
+    default:
+      return 'primary'
   }
 }
 </script>
@@ -81,20 +91,20 @@ const getTypeBadge = (type: Activity['type']) => {
 <template>
   <Card title="Recent Activity" subtitle="Latest actions from your team">
     <div class="space-y-4">
-      <div 
+      <div
         v-for="activity in activities"
         :key="activity.id"
         class="flex items-start space-x-4 p-3 rounded-xl hover:bg-blue-50/50 transition-colors cursor-pointer"
       >
         <!-- Activity Type Indicator -->
         <div class="relative">
-          <div 
+          <div
             class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
             :class="getTypeColor(activity.type)"
           >
             {{ activity.user.avatar }}
           </div>
-          <div 
+          <div
             class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white"
             :class="getTypeColor(activity.type)"
           ></div>
