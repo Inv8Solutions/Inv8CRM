@@ -1,5 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { auth } from '@/firebase'
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  OAuthProvider,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from 'firebase/auth'
 
 const emit = defineEmits<{
   (e: 'login'): void
@@ -12,10 +22,42 @@ const isLoading = ref(false)
 
 const handleLogin = async () => {
   isLoading.value = true
-  // Simulate login delay
-  await new Promise((resolve) => setTimeout(resolve, 800))
-  isLoading.value = false
-  emit('login')
+  try {
+    const persistence = rememberMe.value ? browserLocalPersistence : browserSessionPersistence
+    await setPersistence(auth, persistence)
+    await signInWithEmailAndPassword(auth, email.value, password.value)
+    emit('login')
+  } catch (err: any) {
+    alert(err?.message || String(err))
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleGoogle = async () => {
+  isLoading.value = true
+  try {
+    const provider = new GoogleAuthProvider()
+    await signInWithPopup(auth, provider)
+    emit('login')
+  } catch (err: any) {
+    alert(err?.message || String(err))
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleApple = async () => {
+  isLoading.value = true
+  try {
+    const provider = new OAuthProvider('apple.com')
+    await signInWithPopup(auth, provider)
+    emit('login')
+  } catch (err: any) {
+    alert(err?.message || String(err))
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -168,6 +210,7 @@ const handleLogin = async () => {
         <!-- Social Login -->
         <div class="grid grid-cols-2 gap-4">
           <button
+            @click.prevent="handleGoogle"
             class="flex items-center justify-center px-4 py-3 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors"
           >
             <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -191,6 +234,7 @@ const handleLogin = async () => {
             Google
           </button>
           <button
+            @click.prevent="handleApple"
             class="flex items-center justify-center px-4 py-3 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors"
           >
             <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">

@@ -7,6 +7,8 @@ import {
   onSnapshot,
   deleteDoc,
   doc,
+  updateDoc,
+  serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '@/firebase'
@@ -15,18 +17,22 @@ interface Lead {
   id: string
   name: string
   company: string
-  email: string
-  phone: string
-  status: string
-  value: number
-  source: string
-  assignedTo: string
+  role: string
+  location: string
+  facebookAccount: string
+  leadSource: string
+  serviceType: string
+  budget: number
+  notes: string
   createdAt: string | Timestamp | Date
+  updatedAt?: string | Timestamp | Date
 }
 
 const leads = ref<Lead[]>([])
 const loading = ref(true)
 const error = ref('')
+const showEditModal = ref(false)
+const editingLead = ref<Partial<Lead> | null>(null)
 
 // Fetch leads from Firestore
 const fetchLeads = (): void => {
@@ -42,13 +48,15 @@ const fetchLeads = (): void => {
             id: snapshotDoc.id,
             name: data.name || '',
             company: data.company || '',
-            email: data.email || '',
-            phone: data.phone || '',
-            status: data.status || 'New',
-            value: data.value || 0,
-            source: data.source || '',
-            assignedTo: data.assignedTo || '',
+            role: data.role || '',
+            location: data.location || '',
+            facebookAccount: data.facebookAccount || '',
+            leadSource: data.leadSource || '',
+            serviceType: data.serviceType || '',
+            budget: data.budget || 0,
+            notes: data.notes || '',
             createdAt: data.createdAt || new Date().toISOString(),
+            updatedAt: data.updatedAt || data.createdAt || new Date().toISOString(),
           } as Lead
         })
         loading.value = false
@@ -74,6 +82,43 @@ const deleteLead = async (leadId: string): Promise<void> => {
       error.value = `Failed to delete lead: ${err?.message || String(err)}`
       alert('Failed to delete lead')
     }
+  }
+}
+
+// Open edit modal
+const openEdit = (lead: Lead): void => {
+  editingLead.value = { ...lead }
+  showEditModal.value = true
+}
+
+const closeEdit = (): void => {
+  editingLead.value = null
+  showEditModal.value = false
+}
+
+const saveEdit = async (): Promise<void> => {
+  if (!editingLead.value || !editingLead.value.id) return
+  try {
+    const id = editingLead.value.id
+    const payload = { ...editingLead.value } as any
+    delete payload.id
+    payload.updatedAt = serverTimestamp()
+    await updateDoc(doc(db, 'leads', id), payload)
+
+    // Update local list (best-effort)
+    const idx = leads.value.findIndex((l) => l.id === id)
+    if (idx !== -1) {
+      leads.value[idx] = {
+        ...leads.value[idx],
+        ...(editingLead.value as Lead),
+        updatedAt: new Date().toISOString(),
+      }
+    }
+
+    closeEdit()
+  } catch (err) {
+    console.error('Failed to save lead:', err)
+    alert('Failed to save lead')
   }
 }
 
@@ -149,6 +194,69 @@ const formatDate = (date: string | Timestamp | Date): string => {
       </button>
     </div>
 
+    <!-- Edit Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 z-40 flex items-center justify-center">
+      <div class="fixed inset-0 bg-black/40" @click="closeEdit"></div>
+      <div class="bg-white rounded-xl shadow-lg z-50 w-11/12 md:w-1/2 p-6">
+        <h3 class="text-lg font-semibold mb-4">Edit Lead</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="text-sm text-gray-600">Name</label>
+            <input v-model="editingLead.name" class="w-full mt-1 p-2 border rounded" />
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Company</label>
+            <input v-model="editingLead.company" class="w-full mt-1 p-2 border rounded" />
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm text-gray-600">Role</label>
+              <input v-model="editingLead.role" class="w-full mt-1 p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-gray-600">Location</label>
+              <input v-model="editingLead.location" class="w-full mt-1 p-2 border rounded" />
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Facebook Account</label>
+            <input v-model="editingLead.facebookAccount" class="w-full mt-1 p-2 border rounded" />
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-sm text-gray-600">Lead Source</label>
+              <input v-model="editingLead.leadSource" class="w-full mt-1 p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-gray-600">Service Type</label>
+              <input v-model="editingLead.serviceType" class="w-full mt-1 p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-gray-600">Budget</label>
+              <input
+                type="number"
+                v-model.number="editingLead.budget"
+                class="w-full mt-1 p-2 border rounded"
+              />
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Notes</label>
+            <textarea
+              v-model="editingLead.notes"
+              class="w-full mt-1 p-2 border rounded"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="mt-4 flex justify-end space-x-2">
+          <button @click="closeEdit" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+          <button @click="saveEdit" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Leads Table -->
     <div v-if="loading" class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
       <div class="flex items-center justify-center">
@@ -201,119 +309,77 @@ const formatDate = (date: string | Timestamp | Date): string => {
       </div>
     </div>
 
-    <div v-else class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Lead
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Contact
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Status
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Value
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Source
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Assigned To
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Created
-              </th>
-              <th class="relative px-6 py-3">
-                <span class="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="lead in leads" :key="lead.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div>
-                  <div class="text-sm font-medium text-gray-900">{{ lead.name }}</div>
-                  <div class="text-sm text-gray-500">{{ lead.company }}</div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div>
-                  <div class="text-sm text-gray-900">{{ lead.email }}</div>
-                  <div class="text-sm text-gray-500">{{ lead.phone }}</div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  :class="getStatusColor(lead.status)"
-                  class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-                >
-                  {{ lead.status }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ formatCurrency(lead.value) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ lead.source }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ lead.assignedTo }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatDate(lead.createdAt) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="flex items-center space-x-2">
-                  <button
-                    class="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors"
-                    title="Edit"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    @click="deleteLead(lead.id)"
-                    class="text-red-600 hover:text-red-900 p-1 rounded transition-colors"
-                    title="Delete"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <div v-else class="space-y-4">
+      <div
+        v-for="lead in leads"
+        :key="lead.id"
+        class="bg-white rounded-xl shadow p-6 border border-gray-200"
+      >
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">{{ lead.name || '—' }}</h3>
+            <p class="text-sm text-gray-500">{{ lead.company || '—' }}</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="openEdit(lead)"
+              class="text-blue-600 hover:text-blue-900 p-1 rounded"
+              title="Edit"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+            <button
+              @click="deleteLead(lead.id)"
+              class="text-red-600 hover:text-red-900 p-1 rounded"
+              title="Delete"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="space-y-2">
+            <div class="text-sm text-gray-600">Role</div>
+            <div class="text-sm text-gray-900">{{ lead.role || '—' }}</div>
+            <div class="text-sm text-gray-600 mt-2">Location</div>
+            <div class="text-sm text-gray-900">{{ lead.location || '—' }}</div>
+            <div class="text-sm text-gray-600 mt-2">Facebook</div>
+            <div class="text-sm text-gray-900">{{ lead.facebookAccount || '—' }}</div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="text-sm text-gray-600">Lead Source</div>
+            <div class="text-sm text-gray-900">{{ lead.leadSource || '—' }}</div>
+            <div class="text-sm text-gray-600 mt-2">Service Type</div>
+            <div class="text-sm text-gray-900">{{ lead.serviceType || '—' }}</div>
+            <div class="text-sm text-gray-600 mt-2">Budget</div>
+            <div class="text-sm text-gray-900">{{ formatCurrency(lead.budget || 0) }}</div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="text-sm text-gray-600">Notes</div>
+            <div class="text-sm text-gray-900">{{ lead.notes || '—' }}</div>
+            <div class="flex items-center justify-between mt-4 text-sm text-gray-500">
+              <div>Created: {{ formatDate(lead.createdAt) }}</div>
+              <div>Updated: {{ formatDate(lead.updatedAt) }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -1,8 +1,22 @@
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { auth } from '@/firebase'
+import { onAuthStateChanged, User } from 'firebase/auth'
 import StatsCard from './StatsCard.vue'
 import RecentActivity from './RecentActivity.vue'
 import DealsPipeline from './DealsPipeline.vue'
 import Card from '../Common/Card.vue'
+
+const currentUser = ref<User | null>(null)
+
+onMounted(() => {
+  const unsub = onAuthStateChanged(auth, (u) => {
+    currentUser.value = u
+  })
+  onUnmounted(() => unsub())
+})
+
+const userDisplay = computed(() => currentUser.value?.displayName || currentUser.value?.email || 'Guest')
 
 const stats = [
   {
@@ -49,9 +63,10 @@ const upcomingTasks = [
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <p class="text-blue-500 mt-1">Welcome back, John! Here's what's happening today.</p>
+        <p class="text-blue-500 mt-1">Welcome back, {{ userDisplay }}! Here's what's happening today.</p>
       </div>
       <div class="flex items-center space-x-3">
+        <div class="text-sm text-gray-600">Signed in as <span class="font-medium text-gray-800">{{ userDisplay }}</span></div>
         <button
           class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
         >

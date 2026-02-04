@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Login from './components/Auth/Login.vue'
-import Navbar from './components/Navbar/Navbar.vue'
 import Sidebar from './components/Sidebar/Sidebar.vue'
 import Dashboard from './components/Dashboard/Dashboard.vue'
 import Contacts from './components/Contacts/Contacts.vue'
@@ -32,8 +31,7 @@ const handleLogin = () => {
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- Navbar -->
-      <Navbar />
+      <!-- Navbar removed -->
 
       <!-- Page Content -->
       <main class="flex-1 overflow-y-auto p-6">
