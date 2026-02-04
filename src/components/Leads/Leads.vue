@@ -29,17 +29,17 @@ const loading = ref(true)
 const error = ref('')
 
 // Fetch leads from Firestore
-const fetchLeads = () => {
+const fetchLeads = (): void => {
   try {
     const leadsQuery = query(collection(db, 'leads'), orderBy('createdAt', 'desc'))
 
     onSnapshot(
       leadsQuery,
       (snapshot) => {
-        leads.value = snapshot.docs.map((doc) => {
-          const data = doc.data()
+        leads.value = snapshot.docs.map((snapshotDoc) => {
+          const data = snapshotDoc.data()
           return {
-            id: doc.id,
+            id: snapshotDoc.id,
             name: data.name || '',
             company: data.company || '',
             email: data.email || '',
@@ -54,8 +54,7 @@ const fetchLeads = () => {
         loading.value = false
       },
       (err) => {
-        console.error('Error fetching leads:', err)
-        error.value = `Failed to load leads: ${err.message}`
+        error.value = `Failed to load leads: ${err?.message || String(err)}`
         loading.value = false
       },
     )
@@ -67,12 +66,12 @@ const fetchLeads = () => {
 }
 
 // Delete lead
-const deleteLead = async (leadId: string) => {
+const deleteLead = async (leadId: string): Promise<void> => {
   if (confirm('Are you sure you want to delete this lead?')) {
     try {
       await deleteDoc(doc(db, 'leads', leadId))
     } catch (err) {
-      console.error('Error deleting lead:', err)
+      error.value = `Failed to delete lead: ${err?.message || String(err)}`
       alert('Failed to delete lead')
     }
   }
@@ -82,7 +81,7 @@ onMounted(() => {
   fetchLeads()
 })
 
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: string): string => {
   switch (status) {
     case 'New':
       return 'bg-blue-100 text-blue-800'
@@ -99,7 +98,7 @@ const getStatusColor = (status: string) => {
   }
 }
 
-const formatCurrency = (amount: number) => {
+const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -107,7 +106,7 @@ const formatCurrency = (amount: number) => {
   }).format(amount)
 }
 
-const formatDate = (date: string | Timestamp | Date) => {
+const formatDate = (date: string | Timestamp | Date): string => {
   if (!date) return '-'
 
   try {
@@ -121,8 +120,7 @@ const formatDate = (date: string | Timestamp | Date) => {
       return new Date(date).toLocaleDateString()
     }
     return '-'
-  } catch (err) {
-    console.warn('Error formatting date:', err)
+  } catch {
     return '-'
   }
 }
